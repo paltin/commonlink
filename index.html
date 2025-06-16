@@ -16,17 +16,21 @@
         height: 100%;
       }
       #unity-container {
-        position: absolute; /* Use absolute positioning to fill viewport */
-        width: 100%;
-        height: 100%;
+        /* Position fixed ensures it's relative to the viewport, not just the document flow */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         display: flex; /* Use flexbox for centering content */
         justify-content: center; /* Center horizontally */
         align-items: center; /* Center vertically */
         background: #000; /* A black background for the splash screen */
       }
       #unity-canvas {
-        width: 100%; /* Make canvas fill its container */
-        height: 100%; /* Make canvas fill its container */
+        /* Canvas fills the fixed container */
+        width: 100%;
+        height: 100%;
         display: block; /* Remove extra space below canvas */
       }
       /* Ensure other UI elements within the container are positioned correctly */
@@ -34,20 +38,27 @@
       #unity-warning,
       #unity-footer {
         position: absolute;
-        /* You might need to adjust their positioning (top, bottom, left, right)
-           to ensure they are visible and correctly placed within the full-screen canvas. */
+        /* Adjust positioning as needed, relative to #unity-container */
       }
-      /* Example adjustment for footer if it's pushed off screen */
       #unity-footer {
-          bottom: 10px; /* Adjust as needed */
+          bottom: 10px;
           left: 50%;
           transform: translateX(-50%);
+          /* Ensure footer is above the canvas but within its bounds */
+          z-index: 10; /* Give it a higher z-index to be on top */
+      }
+      #unity-loading-bar {
+          z-index: 10;
+      }
+      #unity-warning {
+          z-index: 10;
       }
     </style>
   </head>
   <body>
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=800 height=600 tabindex="-1"></canvas>
+      <!-- Removed width/height attributes from canvas to let CSS/JS control it fully -->
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -100,36 +111,40 @@
         matchWebGLToCanvasSize: true
       };
 
-      // Unity's default mobile setup already handles full screen well.
-      // For desktop, we explicitly set the container and canvas to fill the viewport.
-      // The `else` block for desktop is now largely handled by CSS,
-      // but we still ensure the class names are correct.
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         var meta = document.createElement('meta');
         meta.name = 'viewport';
         meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
         document.getElementsByTagName('head')[0].appendChild(meta);
-        unityContainer.className = "unity-mobile"; // Ensure unity-mobile class is applied
-        canvas.className = "unity-mobile"; // Ensure unity-mobile class is applied
+        unityContainer.className = "unity-mobile";
+        canvas.className = "unity-mobile";
       } else {
-        unityContainer.className = "unity-desktop"; // Ensure unity-desktop class is applied
-        canvas.className = "unity-desktop"; // Ensure unity-desktop class is applied
-        // The fixed width/height on canvas.style for desktop is removed as CSS handles it
-        // and Unity's matchWebGLToCanvasSize will sync internal resolution.
+        unityContainer.className = "unity-desktop";
+        canvas.className = "unity-desktop";
+        // Fixed dimensions for desktop are removed, CSS and Unity's matchWebGLToCanvasSize handle sizing.
       }
 
       document.querySelector("#unity-loading-bar").style.display = "block";
 
-      // Function to resize canvas and container
+      // Function to ensure canvas fills the available space
       function resizeCanvas() {
-        // unityContainer will be 100% width/height of body, which is 100% of viewport
-        // The canvas inside it will also be 100% of its parent.
-        // Unity's internal render buffer will match this if matchWebGLToCanvasSize is true.
+        // With #unity-container using position: fixed and top/left/right/bottom 0,
+        // it will cover the entire visible viewport.
+        // The canvas inside it, set to width: 100%; height: 100%; in CSS, will
+        // automatically fill this container.
+        // Unity's matchWebGLToCanvasSize: true will ensure its internal render
+        // buffer matches the canvas DOM element's size.
+        // No explicit JS sizing is strictly needed here for the main canvas,
+        // but this function ensures a callback is present for the resize event.
       }
 
-      // Initial resize on load
+      // Initial resize on load and creating Unity instance
       window.onload = () => {
-        resizeCanvas(); // Call once on load
+        // Call resizeCanvas initially, though CSS should handle most of it.
+        // This ensures the window.innerHeight/innerWidth are properly calculated
+        // after all UI is loaded.
+        resizeCanvas();
+
         var script = document.createElement("script");
         script.src = loaderUrl;
         script.onload = () => {
@@ -149,9 +164,6 @@
         };
         document.body.appendChild(script);
       };
-
-      // Removed direct script append from body, moved into window.onload
-      // to ensure canvas and container are ready before Unity instance creation.
     </script>
   </body>
 </html>
